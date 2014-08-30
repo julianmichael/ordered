@@ -73,6 +73,20 @@ sealed trait SortedStream[A] {
     map(f).flatten
   }
 
+  // take two sorted streams and put them into one. special case of flatten, but
+  // easier to work with, and provices a plus for MonadPlus (but not really,
+  // since we're not a monad in the right category.)
+  def merge(other: SortedStream[A]): SortedStream[A] = SimpleStream {
+    (self.uncons, other.uncons) match {
+      case (None, None) => None
+      case (x, None) => x
+      case (None, x) => x
+      case (Some((head1, tail1)), Some((head2, tail2))) =>
+        if (ord.lt(head1, head2)) Some((head1, tail1.merge(other)))
+        else Some((head2, tail2.merge(self)))
+    }
+  }
+
   def take(n: Int): SortedStream[A] =
     if(n <= 0) empty[A]
     else SimpleStream {
