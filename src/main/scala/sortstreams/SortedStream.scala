@@ -32,6 +32,9 @@ sealed trait SortedStream[A] {
 
   def uncons: Option[(A, SortedStream[A])]
 
+  def headOption: Option[A] = uncons map (_._1)
+  def tailOption: Option[SortedStream[A]] = uncons map (_._2)
+
   def insert(el: A): SortedStream[A] = SimpleStream {
     self.uncons match {
       case None => Some((el, empty[A]))
@@ -73,16 +76,23 @@ sealed trait SortedStream[A] {
     map(f).flatten
   }
 
-  // take two sorted streams and put them into one. special case of flatten, but
-  // easier to work with, and provices a plus for MonadPlus (but not really,
-  // since we're not a monad in the right category.)
+  def filter(p: A => Boolean): SortedStream[A] = SimpleStream {
+    self.uncons match {
+      case None => None
+      case Some((head, tail)) =>
+        if(p(head)) Some((head, tail.filter(p)))
+        else tail.filter(p).uncons
+    }
+  }
+
+  // take two sorted streams and put them into one. special case of flatten
   def merge(other: SortedStream[A]): SortedStream[A] = SimpleStream {
     (self.uncons, other.uncons) match {
       case (None, None) => None
       case (x, None) => x
       case (None, x) => x
       case (Some((head1, tail1)), Some((head2, tail2))) =>
-        if (ord.lt(head1, head2)) Some((head1, tail1.merge(other)))
+        if (ord.lteq(head1, head2)) Some((head1, tail1.merge(other)))
         else Some((head2, tail2.merge(self)))
     }
   }
@@ -95,9 +105,23 @@ sealed trait SortedStream[A] {
       }
     }
 
+  def remove(a: A): SortedStream[A] = SimpleStream {
+    self.uncons match {
+      case None => None
+      case Some((head, tail)) =>
+        if(a == head) tail.uncons
+        else Some((head, tail.remove(a)))
+    }
+  }
+
   // careful to take(n) first! this won't terminate if you're infinite
   def toList: List[A] = uncons.toList flatMap {
     case (head, tail) => head :: tail.toList
+  }
+
+  def toStream: Stream[A] = self.uncons match {
+    case None => Stream.empty
+    case Some((head, tail)) => head #:: tail.toStream
   }
 }
 
@@ -122,6 +146,20 @@ object SortedStream extends SortedStreamInstances {
   def recurrence[A](z: A, s: A => A)(implicit o: Ordering[A]): SortedStream[A] = new SortedStream[A] {
     val ord = o
     lazy val uncons = Some((z, recurrence(s(z), s)))
+  }
+
+  def fromList[A](list: List[A])(implicit ord: Ordering[A]): SortedStream[A] = {
+    SimpleStream {
+      list.sorted match {
+        case Nil => None
+        case head :: tail => Some(head, fromList(tail))
+      }
+    }
+  }
+
+  def fromOption[A](opt: Option[A])(implicit ord: Ordering[A]): SortedStream[A] = opt match {
+    case None => SortedStream.empty
+    case Some(x) => SortedStream.unit(x)
   }
 }
 
