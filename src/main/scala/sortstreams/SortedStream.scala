@@ -105,10 +105,17 @@ sealed trait SortedStream[A] {
       }
     }
 
+  def takeWhile(f: A => Boolean): SortedStream[A] = SimpleStream {
+    self.uncons flatMap {
+      case (head, tail) =>
+        if(f(head)) Some((head, tail.takeWhile(f)))
+        else None
+    }
+  }
+
   def remove(a: A): SortedStream[A] = SimpleStream {
-    self.uncons match {
-      case None => None
-      case Some((head, tail)) =>
+    self.uncons flatMap {
+      case (head, tail) =>
         if(a == head) tail.uncons
         else Some((head, tail.remove(a)))
     }

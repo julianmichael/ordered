@@ -16,17 +16,19 @@ class SortedStreamTestSuite extends FunSuite {
     assert(ten.insert(-1).tailOption.get.toList === ten.toList)
   }
 
-  test("wonky time") {
-    def successorsMultiplying(i: Int): SortedStream[Int] = {
-      val immediateSuccessors = SortedStream.fromList(List(i + 1, i + 2))
-      SortedStream.SimpleStream {
-        Some(i, immediateSuccessors.flatMap(successorsMultiplying))
-      }
-    }
-    println(successorsMultiplying(0).take(50).toList)
+  test("toStream") {
+    assert(nats.toStream.toString === "Stream(0, ?)")
   }
 
-  test("toStream") {
-    println(nats.toStream)
+  test("remove") {
+    assert(nats.remove(0).headOption.get === 1)
+  }
+
+  test("filter") {
+    assert(nats.filter(_ % 2 == 0).take(3).toList === List(0, 2, 4))
+  }
+
+  test("takeWhile") {
+    assert(nats.takeWhile(_ < 10).toList === nats.take(10).toList)
   }
 }
