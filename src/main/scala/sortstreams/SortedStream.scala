@@ -113,6 +113,12 @@ sealed trait SortedStream[A] {
     }
   }
 
+  def takeFirst: SortedStream[A] = SimpleStream {
+    self.uncons flatMap {
+      case (head, tail) => Some((head, tail.takeWhile(x => ord.equiv(head, x))))
+    }
+  }
+
   def remove(a: A): SortedStream[A] = SimpleStream {
     self.uncons flatMap {
       case (head, tail) =>

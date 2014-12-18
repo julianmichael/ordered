@@ -31,4 +31,9 @@ class SortedStreamTestSuite extends FunSuite {
   test("takeWhile") {
     assert(nats.takeWhile(_ < 10).toList === nats.take(10).toList)
   }
+
+  test("takeFirst") {
+    assert(nats.takeFirst.toList === List(0))
+    assert((nats merge nats).takeFirst.toList === List(0, 0))
+  }
 }
