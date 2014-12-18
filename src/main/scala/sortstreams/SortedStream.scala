@@ -32,6 +32,8 @@ sealed trait SortedStream[A] {
 
   def uncons: Option[(A, SortedStream[A])]
 
+  def isEmpty: Boolean = uncons.isEmpty
+
   def headOption: Option[A] = uncons map (_._1)
   def tailOption: Option[SortedStream[A]] = uncons map (_._2)
 
