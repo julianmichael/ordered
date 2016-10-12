@@ -19,6 +19,7 @@ sealed abstract class OrderedStream[A](implicit private val order: Ordering[A]) 
   def headOption: Option[A]
   def tailOption: Option[OrderedStream[A]]
   def isEmpty: Boolean
+  def ifNonEmpty: Option[:<[A]]
 
   // prefer pattern matching directly to uncons
   // def uncons: Option[(A, OrderedStream[A])]
@@ -102,6 +103,7 @@ class ONil[A](implicit order: Ordering[A]) extends OrderedStream[A]()(order) {
   override def headOption = None
   override def tailOption = None
   override def isEmpty = true
+  override def ifNonEmpty = None
   override def insert(a: A): OrderedStream[A] = a :< this
 
   override def map[B : Ordering](f: A => B): OrderedStream[B] =
@@ -142,6 +144,7 @@ class :<[A] protected[sortstreams] (
   override def headOption = Some(head)
   override def tailOption = Some(tail)
   override def isEmpty = false
+  override def ifNonEmpty = Some(this)
 
   override def insert(a: A): OrderedStream[A] = {
     if(order.lteq(a, head)) a :< this
