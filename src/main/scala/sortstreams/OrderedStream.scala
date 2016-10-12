@@ -231,6 +231,9 @@ trait OrderedStreamInstances {
       case (Some(x), Some(y)) => ord.compare(x, y)
     }
   }
+  implicit def consOrdering[A](implicit ord: Ordering[A]): Ordering[:<[A]] = new Ordering[:<[A]] {
+    def compare(a: :<[A], b: :<[A]): Int = ord.compare(a.head, b.head)
+  }
 }
 
 object OrderedStreamExamples {
