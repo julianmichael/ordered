@@ -66,124 +66,8 @@ sealed abstract class OrderedStream[A](implicit private val order: Ordering[A]) 
 object OrderedStream extends OrderedStreamInstances {
 
   // assumes a is less than all elements: for internal use.
-  implicit protected[OrderedStream] class OrderedStreamConsInfixConstructor[A : Ordering](a: A) {
+  implicit protected[sortstreams] class OrderedStreamConsInfixConstructor[A : Ordering](a: A) {
     @inline def :<(os: => OrderedStream[A]) = new :<(a, os)
-  }
-
-  class ONil[A](implicit order: Ordering[A]) extends OrderedStream[A]()(order) {
-    override def headOption = None
-    override def tailOption = None
-    override def isEmpty = true
-    override def insert(a: A): OrderedStream[A] = a :< this
-
-    override def map[B : Ordering](f: A => B): OrderedStream[B] =
-      ONil[B]
-    override def mapMonotone[B : Ordering](f: A => B): OrderedStream[B] =
-      ONil[B]
-    override def flatten[B : Ordering](implicit ev: A =:= OrderedStream[B], ev2: OrderedStream[B] =:= A): OrderedStream[B] =
-      ONil[B]
-    override def filter(p: A => Boolean): OrderedStream[A] =
-      this
-    override def merge(other: OrderedStream[A]): OrderedStream[A] =
-      other
-    override def take(n: Int): OrderedStream[A] =
-      this
-    override def takeWhile(f: A => Boolean): OrderedStream[A] =
-      this
-    override def drop(n: Int): OrderedStream[A] =
-      this
-    override def dropWhile(f: A => Boolean): OrderedStream[A] =
-      this
-    override def removeFirst(p: A => Boolean): OrderedStream[A] =
-      this
-    override def toList: List[A] = Nil
-    override def toStream: Stream[A] = Stream.empty[A]
-  }
-
-  object ONil {
-    def apply[A : Ordering] = new ONil[A]
-    def unapply(sc: ONil[_]): Boolean = true
-  }
-
-  // assumes head is lower order than everything in tail
-  class :<[A] protected[OrderedStream] (
-    val head: A,
-    _tail: => OrderedStream[A])(implicit order: Ordering[A]) extends OrderedStream[A]()(order) {
-    lazy val tail = _tail
-
-    override def headOption = Some(head)
-    override def tailOption = Some(tail)
-    override def isEmpty = false
-
-    override def insert(a: A): OrderedStream[A] = {
-      if(order.lteq(a, head)) a :< this
-      else head :< tail.insert(a)
-    }
-
-    override def map[B : Ordering](f: A => B): OrderedStream[B] = mapAux(f(head), f)
-    private def mapAux[B : Ordering](fhead: B, f: A => B): OrderedStream[B] = tail match {
-      case ONil() => fhead :< ONil[B]
-      case t @ :<(second, _) =>
-        val fsecond = f(second)
-        // first case needed to break the recursion
-        if(implicitly[Ordering[B]].lteq(fhead, fsecond)) fhead :< t.mapAux(fsecond, f)
-        else t.mapAux(fsecond, f).insert(fhead)
-    }
-    override def mapMonotone[B : Ordering](f: A => B): OrderedStream[B] =
-      f(head) :< tail.mapMonotone(f)
-
-    override def flatten[B : Ordering](implicit ev: A =:= OrderedStream[B], ev2: OrderedStream[B] =:= A): OrderedStream[B] = head match {
-      case ONil() => tail.flatten[B]
-      case h :< t => tail.insert(t().asInstanceOf[A]).flatten[B] // TODO this is totally safe, but why does the compiler not like it without the cast?
-    }
-
-    override def filter(p: A => Boolean): OrderedStream[A] = if(p(head)) {
-      head :< tail.filter(p)
-    } else {
-      tail.filter(p)
-    }
-
-    override def merge(other: OrderedStream[A]): OrderedStream[A] = other match {
-      case ONil() => this
-      case h :< t => if(order.lteq(head, h)) {
-        head :< tail.merge(other)
-      } else {
-        h :< t().merge(this)
-      }
-    }
-
-    override def take(n: Int): OrderedStream[A] = if(n <= 0) {
-      empty[A]
-    } else {
-      head :< tail.take(n - 1)
-    }
-
-    override def takeWhile(p: A => Boolean): OrderedStream[A] = if(p(head)) {
-      head :< tail.takeWhile(p)
-    } else {
-      empty[A]
-    }
-
-    override def drop(n: Int): OrderedStream[A] = tail.drop(n - 1)
-
-    override def dropWhile(p: A => Boolean): OrderedStream[A] = if(p(head)) {
-      tail.dropWhile(p)
-    } else {
-      this
-    }
-
-    override def removeFirst(p: A => Boolean): OrderedStream[A] = if(p(head)) {
-      tail
-    } else {
-      head :< tail.removeFirst(p)
-    }
-
-    override def toList: List[A] = head :: tail.toList
-    override def toStream: Stream[A] = head #:: tail.toStream
-  }
-
-  object :< {
-    def unapply[A](sc: :<[A]): Option[(A, () => OrderedStream[A])] = Some((sc.head, () => sc.tail))
   }
 
   def empty[A : Ordering]: OrderedStream[A] =
@@ -210,6 +94,124 @@ object OrderedStream extends OrderedStreamInstances {
     case None => empty[A]
     case Some(a) => unit(a)
   }
+}
+
+import OrderedStream._
+
+class ONil[A](implicit order: Ordering[A]) extends OrderedStream[A]()(order) {
+  override def headOption = None
+  override def tailOption = None
+  override def isEmpty = true
+  override def insert(a: A): OrderedStream[A] = a :< this
+
+  override def map[B : Ordering](f: A => B): OrderedStream[B] =
+    ONil[B]
+  override def mapMonotone[B : Ordering](f: A => B): OrderedStream[B] =
+    ONil[B]
+  override def flatten[B : Ordering](implicit ev: A =:= OrderedStream[B], ev2: OrderedStream[B] =:= A): OrderedStream[B] =
+    ONil[B]
+  override def filter(p: A => Boolean): OrderedStream[A] =
+    this
+  override def merge(other: OrderedStream[A]): OrderedStream[A] =
+    other
+  override def take(n: Int): OrderedStream[A] =
+    this
+  override def takeWhile(f: A => Boolean): OrderedStream[A] =
+    this
+  override def drop(n: Int): OrderedStream[A] =
+    this
+  override def dropWhile(f: A => Boolean): OrderedStream[A] =
+    this
+  override def removeFirst(p: A => Boolean): OrderedStream[A] =
+    this
+  override def toList: List[A] = Nil
+  override def toStream: Stream[A] = Stream.empty[A]
+}
+
+object ONil {
+  def apply[A : Ordering] = new ONil[A]
+  def unapply(sc: ONil[_]): Boolean = true
+}
+
+// assumes head is lower order than everything in tail
+class :<[A] protected[sortstreams] (
+  val head: A,
+  _tail: => OrderedStream[A])(implicit order: Ordering[A]) extends OrderedStream[A]()(order) {
+  lazy val tail = _tail
+
+  override def headOption = Some(head)
+  override def tailOption = Some(tail)
+  override def isEmpty = false
+
+  override def insert(a: A): OrderedStream[A] = {
+    if(order.lteq(a, head)) a :< this
+    else head :< tail.insert(a)
+  }
+
+  override def map[B : Ordering](f: A => B): OrderedStream[B] = mapAux(f(head), f)
+  private def mapAux[B : Ordering](fhead: B, f: A => B): OrderedStream[B] = tail match {
+    case ONil() => fhead :< ONil[B]
+    case t @ :<(second, _) =>
+      val fsecond = f(second)
+      // first case needed to break the recursion
+      if(implicitly[Ordering[B]].lteq(fhead, fsecond)) fhead :< t.mapAux(fsecond, f)
+      else t.mapAux(fsecond, f).insert(fhead)
+  }
+  override def mapMonotone[B : Ordering](f: A => B): OrderedStream[B] =
+    f(head) :< tail.mapMonotone(f)
+
+  override def flatten[B : Ordering](implicit ev: A =:= OrderedStream[B], ev2: OrderedStream[B] =:= A): OrderedStream[B] = head match {
+    case ONil() => tail.flatten[B]
+    case h :< t => tail.insert(t().asInstanceOf[A]).flatten[B] // TODO this is totally safe, but why does the compiler not like it without the cast?
+  }
+
+  override def filter(p: A => Boolean): OrderedStream[A] = if(p(head)) {
+    head :< tail.filter(p)
+  } else {
+    tail.filter(p)
+  }
+
+  override def merge(other: OrderedStream[A]): OrderedStream[A] = other match {
+    case ONil() => this
+    case h :< t => if(order.lteq(head, h)) {
+      head :< tail.merge(other)
+    } else {
+      h :< t().merge(this)
+    }
+  }
+
+  override def take(n: Int): OrderedStream[A] = if(n <= 0) {
+    empty[A]
+  } else {
+    head :< tail.take(n - 1)
+  }
+
+  override def takeWhile(p: A => Boolean): OrderedStream[A] = if(p(head)) {
+    head :< tail.takeWhile(p)
+  } else {
+    empty[A]
+  }
+
+  override def drop(n: Int): OrderedStream[A] = tail.drop(n - 1)
+
+  override def dropWhile(p: A => Boolean): OrderedStream[A] = if(p(head)) {
+    tail.dropWhile(p)
+  } else {
+    this
+  }
+
+  override def removeFirst(p: A => Boolean): OrderedStream[A] = if(p(head)) {
+    tail
+  } else {
+    head :< tail.removeFirst(p)
+  }
+
+  override def toList: List[A] = head :: tail.toList
+  override def toStream: Stream[A] = head #:: tail.toStream
+}
+
+object :< {
+  def unapply[A](sc: :<[A]): Option[(A, () => OrderedStream[A])] = Some((sc.head, () => sc.tail))
 }
 
 trait OrderedStreamInstances {
