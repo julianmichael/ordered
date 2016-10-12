@@ -210,8 +210,13 @@ class :<[A] protected[sortstreams] (
   override def toStream: Stream[A] = head #:: tail.toStream
 }
 
+// don't evaluate the tail
 object :< {
   def unapply[A](sc: :<[A]): Option[(A, () => OrderedStream[A])] = Some((sc.head, () => sc.tail))
+}
+// evaluate the tail
+object :<+ {
+  def unapply[A](sc: :<[A]): Option[(A, OrderedStream[A])] = Some((sc.head, sc.tail))
 }
 
 trait OrderedStreamInstances {
