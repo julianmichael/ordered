@@ -24,6 +24,8 @@ sealed abstract class OrderedStream[A](implicit private val order: Ordering[A]) 
   // prefer pattern matching directly to uncons
   // def uncons: Option[(A, OrderedStream[A])]
 
+  def find(p: A => Boolean): Option[A]
+
   def insert(a: A): OrderedStream[A]
 
   // f must respect the strict version of the preorder, as in: a < b => f(a) < f(b).
@@ -104,8 +106,11 @@ class ONil[A](implicit order: Ordering[A]) extends OrderedStream[A]()(order) {
   override def tailOption = None
   override def isEmpty = true
   override def ifNonEmpty = None
-  override def insert(a: A): OrderedStream[A] = a :< this
 
+  override def find(p: A => Boolean) =
+    None
+  override def insert(a: A): OrderedStream[A] =
+    a :< this
   override def map[B : Ordering](f: A => B) =
     ONil[B]
   override def mapMonotone[B : Ordering](f: A => B) =
@@ -126,6 +131,7 @@ class ONil[A](implicit order: Ordering[A]) extends OrderedStream[A]()(order) {
     this
   override def removeFirst(p: A => Boolean) =
     this
+
   override def toList = Nil
   override def toStream = Stream.empty[A]
 }
@@ -145,6 +151,12 @@ class :<[A] protected[sortstreams] (
   override def tailOption = Some(tail)
   override def isEmpty = false
   override def ifNonEmpty = Some(this)
+
+  override def find(p: A => Boolean) = if(p(head)) {
+    Some(head)
+  } else {
+    tail.find(p)
+  }
 
   override def insert(a: A): :<[A] = {
     if(order.lteq(a, head)) a :< this
