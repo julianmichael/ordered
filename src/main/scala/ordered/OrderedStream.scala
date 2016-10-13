@@ -1,8 +1,7 @@
-package sortstreams
+package ordered
 
-/* A second shot at sorted streams.
- * This implementation is much cleaner and has slightly different properties:
- * in particular, it always evaluates until it knows its head (or is empty).
+/* A cleaner implementation of sorted streams.
+ * Note that this implementation always evaluates until it knows its head (or is empty).
  * So if you ever dropWhile or filter out all the elements, you'll immediately go into an infinite loop.
  *
  * Also I realized there are really two kinds of monotone functions we're dealing with here;
@@ -20,9 +19,6 @@ sealed abstract class OrderedStream[A](implicit private val order: Ordering[A]) 
   def tailOption: Option[OrderedStream[A]]
   def isEmpty: Boolean
   def ifNonEmpty: Option[:<[A]]
-
-  // prefer pattern matching directly to uncons
-  // def uncons: Option[(A, OrderedStream[A])]
 
   def find(p: A => Boolean): Option[A]
 
@@ -69,7 +65,7 @@ sealed abstract class OrderedStream[A](implicit private val order: Ordering[A]) 
 object OrderedStream extends OrderedStreamInstances {
 
   // assumes a is less than all elements: for internal use.
-  implicit protected[sortstreams] class OrderedStreamConsInfixConstructor[A : Ordering](a: A) {
+  implicit protected[ordered] class OrderedStreamConsInfixConstructor[A : Ordering](a: A) {
     @inline def :<(os: => OrderedStream[A]) = new :<(a, os)
   }
 
@@ -142,7 +138,7 @@ object ONil {
 }
 
 // assumes head is lower order than everything in tail
-class :<[A] protected[sortstreams] (
+class :<[A] protected[ordered] (
   val head: A,
   _tail: => OrderedStream[A])(implicit order: Ordering[A]) extends OrderedStream[A]()(order) {
   lazy val tail = _tail
@@ -177,7 +173,7 @@ class :<[A] protected[sortstreams] (
 
   override def flatten[B : Ordering](implicit ev: A =:= OrderedStream[B], ev2: OrderedStream[B] =:= A) = head match {
     case ONil() => tail.flatten[B]
-    case h :< t => tail.insert(t().asInstanceOf[A]).flatten[B] // TODO this is totally safe, but why does the compiler not like it without the cast?
+    case h :<+ t => tail.insert(t.asInstanceOf[A]).flatten[B] // TODO this is totally safe, but why does the compiler not like it without the cast?
   }
 
   override def filter(p: A => Boolean) = if(p(head)) {

@@ -1,4 +1,4 @@
-package sortstreams
+package ordered
 
 import utest._
 
