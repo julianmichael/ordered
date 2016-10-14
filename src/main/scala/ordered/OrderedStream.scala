@@ -64,9 +64,10 @@ sealed abstract class OrderedStream[A](implicit private val order: Ordering[A]) 
 
 object OrderedStream extends OrderedStreamInstances {
 
-  // assumes a is less than all elements: for internal use.
-  implicit protected[ordered] class OrderedStreamConsInfixConstructor[A : Ordering](a: A) {
+  // requires that a is less than all elements.
+  implicit class OrderedStreamConsInfixConstructors[A : Ordering](a: A) {
     @inline def :<(os: => OrderedStream[A]) = new :<(a, os)
+    @inline def :<+(os: OrderedStream[A]) = new :<(a, os)
   }
 
   def empty[A : Ordering]: OrderedStream[A] =
