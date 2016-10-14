@@ -75,8 +75,11 @@ object OrderedStream extends OrderedStreamInstances {
     z :< recurrence(s(z), s)
 
   // for use with side-effecting computations. assumes compute <= subsequent computes.
-  def exhaustively[A : Ordering](compute: => A): OrderedStream[A] =
-    compute :< exhaustively(compute)
+  // repeats the computation until no result is returned.
+  def exhaustively[A : Ordering](compute: => Option[A]): OrderedStream[A] = compute match {
+    case None => empty[A]
+    case Some(a) => a :< exhaustively(compute)
+  }
 
   // TODO: more efficient "lazy quicksort" sounds like fun
   def fromIndexedSeq[A : Ordering](is: IndexedSeq[A]): OrderedStream[A] =
