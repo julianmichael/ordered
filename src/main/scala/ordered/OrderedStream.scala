@@ -70,7 +70,7 @@ object OrderedStream extends OrderedStreamInstances {
   def unit[A : Ordering](el: A): OrderedStream[A] =
     el :< ONil[A]
 
-  def unfold[A : Ordering, B](unacc: B, uncons: B => Option[(A, B)]): OrderedStream[A] = uncons(unacc) match {
+  def unfold[B, A : Ordering](unacc: B, uncons: B => Option[(A, B)]): OrderedStream[A] = uncons(unacc) match {
     case None => empty[A]
     case Some((head, remainder)) => head :< unfold(remainder, uncons)
   }
