@@ -132,6 +132,8 @@ class ONil[A](implicit order: Ordering[A]) extends OrderedStream[A]()(order) {
 
   override def toList = Nil
   override def toStream = Stream.empty[A]
+
+  override def toString = s"ONil"
 }
 
 object ONil {
@@ -175,7 +177,7 @@ class :<[A] protected[ordered] (
 
   override def flatten[B : Ordering](implicit ev: A =:= OrderedStream[B], ev2: OrderedStream[B] =:= A) = head match {
     case ONil() => tail.flatten[B]
-    case h :<+ t => tail.insert(t.asInstanceOf[A]).flatten[B] // TODO this is totally safe, but why does the compiler not like it without the cast?
+    case h :<+ t => h :< tail.insert(t.asInstanceOf[A]).flatten[B] // TODO this is totally safe, but why does the compiler not like it without the cast?
   }
 
   override def filter(p: A => Boolean) = if(p(head)) {
@@ -221,6 +223,8 @@ class :<[A] protected[ordered] (
 
   override def toList: List[A] = head :: tail.toList
   override def toStream: Stream[A] = head #:: tail.toStream
+
+  override def toString = s"$head :< ?"
 }
 
 // don't evaluate the tail
