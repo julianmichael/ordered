@@ -175,9 +175,9 @@ class :<[A] protected[ordered] (
   override def mapMonotone[B : Ordering](f: A => B) =
     f(head) :< tail.mapMonotone(f)
 
-  override def flatten[B : Ordering](implicit ev: A =:= OrderedStream[B], ev2: OrderedStream[B] =:= A) = head match {
+  override def flatten[B : Ordering](implicit ev: A =:= OrderedStream[B], ev2: OrderedStream[B] =:= A) = ev(head) match {
     case ONil() => tail.flatten[B]
-    case h :<+ t => h :< tail.insert(t.asInstanceOf[A]).flatten[B] // TODO this is totally safe, but why does the compiler not like it without the cast?
+    case h :<+ t => h :< tail.insert(t).flatten[B]
   }
 
   override def filter(p: A => Boolean) = if(p(head)) {
