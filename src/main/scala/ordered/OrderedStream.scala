@@ -70,6 +70,11 @@ object OrderedStream extends OrderedStreamInstances {
   def unit[A : Ordering](el: A): OrderedStream[A] =
     el :< ONil[A]
 
+  def unfold[A : Ordering, B](unacc: B, uncons: B => Option[(A, B)]): OrderedStream[A] = uncons(unacc) match {
+    case None => empty[A]
+    case Some((head, remainder)) => head :< unfold(remainder, uncons)
+  }
+
   // requirement: for all a: A, a <= s(a)
   def recurrence[A : Ordering](z: A, s: A => A): OrderedStream[A] =
     z :< recurrence(s(z), s)
