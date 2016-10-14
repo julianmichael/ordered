@@ -1,5 +1,11 @@
 package object ordered {
 
+  // requires that a is less than all elements.
+  implicit class OrderedStreamConsInfixConstructors[A : Ordering](a: A) {
+    @inline def :<(os: => OrderedStream[A]) = new :<(a, os)
+    @inline def :<+(os: OrderedStream[A]) = new :<(a, os)
+  }
+
   // maybe you could do some stuff with fancy evidence... probably no need though
 
   // class Monotonic[A, B, FType <: Singleton <: (A => B),
