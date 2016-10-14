@@ -11,7 +11,7 @@ package ordered
  * whereas the first always has to look at at least one child to make sure the head is still the smallest.
  */
 
-sealed abstract class OrderedStream[A](implicit private val order: Ordering[A]) {
+sealed abstract class OrderedStream[A](implicit val order: Ordering[A]) {
 
   import OrderedStream._
 
