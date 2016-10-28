@@ -1,13 +1,21 @@
-name := "ordered"
+lazy val root = project.in(file("."))
+  .aggregate(orderedJVM, orderedJS)
+  .settings(
+  publish := {},
+  publishLocal := {})
 
-version := "0.1"
-
-scalaVersion := "2.11.1"
-
-libraryDependencies ++= Seq(
-  "com.lihaoyi" %% "utest" % "0.4.3" % "test"
+lazy val ordered = crossProject.settings(
+  name := "ordered",
+  organization := "org.me",
+  version := "0.1-SNAPSHOT",
+  scalaVersion := "2.11.8",
+  libraryDependencies ++= Seq(
+    "com.lihaoyi" %%% "utest" % "0.4.3" % "test"
+  ),
+  testFrameworks += new TestFramework("utest.runner.Framework"),
+  scalacOptions ++= Seq("-feature", "-language:higherKinds")
 )
 
-testFrameworks += new TestFramework("utest.runner.Framework")
+lazy val orderedJVM = ordered.jvm
+lazy val orderedJS = ordered.js
 
-scalacOptions ++= Seq("-feature", "-language:higherKinds")
