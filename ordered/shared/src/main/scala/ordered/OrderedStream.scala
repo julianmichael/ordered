@@ -1,7 +1,17 @@
 package ordered
 
+// TODO consider making map/flatMap extension methods provided only by monad instances,
+// so that when desired you can used the monotone versions monadically (probably by importing?).
+// fact is that there are two different "monads" and they're not even monads in the traditional sense;
+// they're both monads on slightly different categories, I think...
+// TODO figure out exactly what those are. One (the stricter "monotone" one)
+// definitely is just partially ordered types.
+// but for the other, a structure-preserving map can destroy the equalities in a partial order.
+// hummm...
+// TODO trampoline this as well. Def gonna get stack overflows once things get big
+
 /* A cleaner implementation of sorted streams.
- * Note that this implementation always evaluates until it knows its head (or is empty).
+ * Note that this implementation is strict in its head.
  * So if you ever dropWhile or filter out all the elements, you'll immediately go into an infinite loop.
  *
  * Also I realized there are really two kinds of monotone functions we're dealing with here;
@@ -10,7 +20,6 @@ package ordered
  * The second may be implemented more efficiently, not looking at any of the children at all,
  * whereas the first always has to look at at least one child to make sure the head is still the smallest.
  */
-
 sealed abstract class OrderedStream[A](implicit val order: Ordering[A]) {
 
   import OrderedStream._
@@ -43,6 +52,9 @@ sealed abstract class OrderedStream[A](implicit val order: Ordering[A]) {
 
   // be careful about filtering all of the elements from an infinite stream---that will cause nontermination
   def filter(p: A => Boolean): OrderedStream[A]
+  // this is already lazy, not worth extra complexity to try to do any better.
+  @inline final def withFilter(p: A => Boolean): OrderedStream[A] = filter(p)
+  @inline final def filterNot(p: A => Boolean): OrderedStream[A] = filter(a => !p(a))
 
   def merge(other: OrderedStream[A]): OrderedStream[A] = other
 
@@ -76,7 +88,7 @@ object OrderedStream extends OrderedStreamInstances {
   }
 
   // requirement: for all a: A, a <= s(a)
-  def recurrence[A : Ordering](z: A, s: A => A): OrderedStream[A] =
+  def recurrence[A : Ordering](z: A, s: A => A): :<[A] =
     z :< recurrence(s(z), s)
 
   // for use with side-effecting computations. assumes compute <= subsequent computes.
@@ -168,7 +180,7 @@ class :<[A] protected[ordered] (
     else head :< tail.insert(a)
   }
 
-  override def map[B : Ordering](f: A => B) = mapAux(f(head), f)
+  override def map[B : Ordering](f: A => B): :<[B] = mapAux(f(head), f)
   private def mapAux[B : Ordering](fhead: B, f: A => B): :<[B] = tail match {
     case ONil() => fhead :< ONil[B]
     case t @ :<(second, _) =>
@@ -177,7 +189,7 @@ class :<[A] protected[ordered] (
       if(implicitly[Ordering[B]].lteq(fhead, fsecond)) fhead :< t.mapAux(fsecond, f)
       else t.mapAux(fsecond, f).insert(fhead)
   }
-  override def mapMonotone[B : Ordering](f: A => B) =
+  override def mapMonotone[B : Ordering](f: A => B): :<[B] =
     f(head) :< tail.mapMonotone(f)
 
   override def flatten[B : Ordering](implicit ev: A =:= OrderedStream[B], ev2: OrderedStream[B] =:= A) = ev(head) match {
