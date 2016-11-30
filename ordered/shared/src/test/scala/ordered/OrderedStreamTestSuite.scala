@@ -7,6 +7,13 @@ object OrderedStreamTestSuite extends TestSuite {
   val nats = intsFrom(0)
   val ten = nats.take(10)
 
+  def time(compute: => Unit): Long = {
+    val begin = System.nanoTime
+    compute
+    val end = System.nanoTime
+    end - begin
+  }
+
   // TODO need way more tests lol
 
   val tests = this {
@@ -33,6 +40,23 @@ object OrderedStreamTestSuite extends TestSuite {
 
     "takeWhile" - {
       assert(nats.takeWhile(_ < 10).toList == nats.take(10).toList)
+    }
+
+    "fromIndexedSeq" - {
+      val someVector = Vector.fill(7000)(util.Random.nextInt(200))
+
+      // // time stuff
+      // val oldTime = time {
+      //   println(OrderedStream.fromSortedSeq(someVector.sorted).headOption)
+      // }
+      // println(oldTime / 1000)
+
+      // val newTime = time {
+      //   println(OrderedStream.fromIndexedSeq(someVector).headOption)
+      // }
+      // println(newTime / 1000)
+
+      assert(OrderedStream.fromIndexedSeq(someVector).toList.toVector == someVector.sorted)
     }
 
     // "lazy unapply" - {

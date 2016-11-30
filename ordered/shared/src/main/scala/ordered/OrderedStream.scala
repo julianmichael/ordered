@@ -72,6 +72,11 @@ sealed abstract class OrderedStream[A](implicit val order: Ordering[A]) {
   def toList: List[A]
 
   def toStream: Stream[A]
+
+  // utility methods for internal use
+
+  // all elements of other guaranteed to be >= all elements of this
+  protected[ordered] def append(other: => OrderedStream[A]): OrderedStream[A]
 }
 
 object OrderedStream extends OrderedStreamInstances {
@@ -98,9 +103,33 @@ object OrderedStream extends OrderedStreamInstances {
     case Some(a) => a :< exhaustively(compute)
   }
 
-  // TODO: more efficient "lazy quicksort" sounds like fun
   def fromIndexedSeq[A : Ordering](is: IndexedSeq[A]): OrderedStream[A] =
     is.sorted.foldRight(empty[A])(_ :< _)
+
+  // TODO lazy quicksort is cool, but only useful once we have stack safety, honestly...
+  // def fromIndexedSeq[A](is: IndexedSeq[A])(implicit ord: Ordering[A]): OrderedStream[A] = {
+  //   if(is.size < 7) {
+  //     is.sorted.foldRight(empty[A])(_ :< _)
+  //   } else {
+  //     // median of 3 randomly chosen pivots
+  //     val pivot = {
+  //       import util.{Random => r}
+  //       val piv1 = is(r.nextInt(is.size))
+  //       val piv2 = is(r.nextInt(is.size))
+  //       val piv3 = is(r.nextInt(is.size))
+  //       if(ord.lteq(piv1, piv2)) ord.max(piv1, piv3) else ord.max(piv2, piv3)
+  //     }
+  //     val left = is.filter(ord.lt(_, pivot))
+  //     OrderedStream.fromIndexedSeq(left).append(
+  //       is.filter(ord.equiv(_, pivot)).foldRight(empty[A])(_ :< _) // all eq to pivot are already sorted
+  //         .append(OrderedStream.fromIndexedSeq(is.filter(ord.gt(_, pivot))))
+  //     )
+  //   }
+  // }
+
+  protected[ordered] def fromSortedSeq[A : Ordering](s: Seq[A]): OrderedStream[A] = {
+    s.foldRight(empty[A])(_ :< _)
+  }
 
   def fromSeq[A : Ordering](is: Seq[A]): OrderedStream[A] =
     fromIndexedSeq(is.toIndexedSeq)
@@ -151,6 +180,9 @@ class ONil[A](implicit order: Ordering[A]) extends OrderedStream[A]()(order) {
   override def toStream = Stream.empty[A]
 
   override def toString = s"ONil"
+
+  override protected[ordered] def append(other: => OrderedStream[A]): OrderedStream[A] =
+    other
 }
 
 object ONil {
@@ -242,6 +274,11 @@ class :<[A] protected[ordered] (
   override def toStream: Stream[A] = head #:: tail.toStream
 
   override def toString = s"$head :< ?"
+
+  // protected util methods
+
+  override protected[ordered] def append(other: => OrderedStream[A]): OrderedStream[A] =
+    head :< tail.append(other)
 }
 
 // don't evaluate the tail
