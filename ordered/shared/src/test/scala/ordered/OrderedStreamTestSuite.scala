@@ -59,6 +59,30 @@ object OrderedStreamTestSuite extends TestSuite {
       assert(OrderedStream.fromIndexedSeq(someVector).toList.toVector == someVector.sorted)
     }
 
+    // XXX wtf, why does this cause the Scala compiler to hang......
+    // "collect" - {
+    //   val v = Vector.fill(500)(util.Random.nextInt(30))
+    //   val init = OrderedStream.empty[Int].insert(4).insert(5)
+    //   val ok = OrderedStream.fromIndexedSeq[Int](v): OrderedStream[Int]
+    //   val orderedThing = ok.collect[Int] {
+    //     case x if x % 2 == 0 => 2 * x
+    //   }.toList.toVector
+    //   // val roundTrip = OrderedStream.fromIndexedSeq(v)//.collect {
+    //   //   case i if i % 2 == 0 => 2 * i
+    //   // }.toList.toVector
+    //   val reference = v.filter(_ % 2 == 0).map(_ * 2).sorted
+    //   assert(v == v)
+    // }
+
+    // "collectMonotone" - {
+    //   val v = Vector.fill(500)(util.Random.nextInt(30))
+    //   val roundTrip = OrderedStream.fromIndexedSeq(v).collectMonotone {
+    //     case i if i % 2 == 0 => 2 * i
+    //   }.toList.toVector
+    //   val reference = v.filter(_ % 2 == 0).map(_ * 2).sorted
+    //   assert(roundTrip == reference)
+    // }
+
     // "lazy unapply" - {
     //   var x = false
     //   val stream = OrderedStream.unit(0).

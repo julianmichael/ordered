@@ -68,6 +68,9 @@ sealed abstract class OrderedStream[A](implicit val order: Ordering[A]) {
 
   def removeFirst(p: A => Boolean): OrderedStream[A]
 
+  def collect[B : Ordering](f: PartialFunction[A, B]): OrderedStream[B]
+  def collectMonotone[B : Ordering](f: PartialFunction[A, B]): OrderedStream[B]
+
   // careful to take(n) first! this won't terminate if you're infinite
   def toList: List[A]
 
@@ -175,6 +178,10 @@ class ONil[A](implicit order: Ordering[A]) extends OrderedStream[A]()(order) {
     this
   override def removeFirst(p: A => Boolean) =
     this
+  override def collect[B : Ordering](f: PartialFunction[A, B]) =
+    ONil[B]
+  override def collectMonotone[B : Ordering](f: PartialFunction[A, B]) =
+    ONil[B]
 
   override def toList = Nil
   override def toStream = Stream.empty[A]
@@ -269,6 +276,12 @@ class :<[A] protected[ordered] (
   } else {
     head :< tail.removeFirst(p)
   }
+
+  // TODO test no stack overflow or whatever
+  override def collect[B : Ordering](f: PartialFunction[A, B]) =
+    f.lift(head).fold(tail.collect(f))(tail.collect(f).insert)
+  override def collectMonotone[B : Ordering](f: PartialFunction[A, B]) =
+    f.lift(head).fold(tail.collect(f))(_ :< tail.collect(f))
 
   override def toList: List[A] = head :: tail.toList
   override def toStream: Stream[A] = head #:: tail.toStream
