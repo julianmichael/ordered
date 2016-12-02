@@ -2,8 +2,8 @@ package ordered
 
 import utest._
 
-object OrderedStreamTestSuite extends TestSuite {
-  import OrderedStreamExamples._
+object ScoredStreamTestSuite extends TestSuite {
+  import ScoredStreamExamples._
   val nats = intsFrom(0)
   val ten = nats.take(10)
 
@@ -22,8 +22,8 @@ object OrderedStreamTestSuite extends TestSuite {
     }
 
     "insert" - {
-      assert(ten.insert(-1).headOption.get == -1)
-      assert(ten.insert(-1).tailOption.get.toList == ten.toList)
+      assert(ten.insert(Scored(-1, 0.0)).headOption.get.item == -1)
+      assert(ten.insert(Scored(-1, 0.0)).tailOption.get.toList == ten.toList)
     }
 
     "toStream" - {
@@ -31,12 +31,24 @@ object OrderedStreamTestSuite extends TestSuite {
     }
 
     "remove" - {
-      assert(nats.removeFirst(_ == 0).headOption.get == 1)
+      assert(nats.removeFirst(_ == 0).headOption.get.item == 1)
     }
 
-    // "map" - {
+    "mapScored" - {
+      val multiplesOf4 = nats.mapScored {
+        case i => Scored(4 * i, i)
+      }.take(4).toList
+      assert(multiplesOf4 == List(0, 4, 8, 12))
+    }
 
-    // }
+    "flatMap" - {
+      val grid = nats.flatMap(intsFrom)
+      assert(grid.take(15).toList == List(0, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4))
+
+      val bigly = nats.flatMap {
+        case i => ScoredStream.unit(Scored(i, i))
+      }
+    }
 
     "filter" - {
       assert(nats.filter(_ % 2 == 0).take(3).toList == List(0, 2, 4))
@@ -46,12 +58,20 @@ object OrderedStreamTestSuite extends TestSuite {
       assert(nats.takeWhile(_ < 10).toList == nats.take(10).toList)
     }
 
+    "collect" - {
+      val multiplesOf4 = nats.collect {
+        case i if i % 2 == 0 => Scored(2 * i, i)
+      }.take(4).toList
+      assert(multiplesOf4 == List(0, 4, 8, 12))
+    }
+
     // "merge" - {
 
     // }
 
     "fromIndexedSeq" - {
       val someVector = Vector.fill(7000)(util.Random.nextInt(200))
+      val someVectorScored = someVector.map(x => Scored(x, x.toDouble))
 
       // // time stuff
       // val oldTime = time {
@@ -64,7 +84,7 @@ object OrderedStreamTestSuite extends TestSuite {
       // }
       // println(newTime / 1000)
 
-      assert(OrderedStream.fromIndexedSeq(someVector).toList.toVector == someVector.sorted)
+      assert(ScoredStream.fromIndexedSeq(someVectorScored).toList.toVector == someVector.sorted)
     }
 
     // XXX wtf, why does this cause the Scala compiler to hang......

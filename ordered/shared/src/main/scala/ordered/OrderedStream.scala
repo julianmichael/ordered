@@ -1,5 +1,7 @@
 package ordered
 
+// TODO RETHINK EVERYTHING because SHIT IS BROKEN ugh
+
 // TODO consider making map/flatMap extension methods provided only by monad instances,
 // so that when desired you can used the monotone versions monadically (probably by importing?).
 // fact is that there are two different "monads" and they're not even monads in the traditional sense;
@@ -156,7 +158,7 @@ class ONil[A](implicit order: Ordering[A]) extends OrderedStream[A]()(order) {
 
   override def find(p: A => Boolean) =
     None
-  override def insert(a: A): OrderedStream[A] =
+  override def insert(a: A): :<[A] =
     a :< this
   override def map[B : Ordering](f: A => B) =
     ONil[B]
@@ -219,14 +221,11 @@ class :<[A] protected[ordered] (
     else head :< tail.insert(a)
   }
 
-  override def map[B : Ordering](f: A => B): :<[B] = mapAux(f(head), f)
-  private def mapAux[B : Ordering](fhead: B, f: A => B): :<[B] = tail match {
-    case ONil() => fhead :< ONil[B]
+  override def map[B : Ordering](f: A => B): :<[B] = tail match {
+    case ONil() => f(head) :< ONil[B]
     case t @ :<(second, _) =>
-      val fsecond = f(second)
-      // first case needed to break the recursion
-      if(implicitly[Ordering[B]].lteq(fhead, fsecond)) fhead :< t.mapAux(fsecond, f)
-      else t.mapAux(fsecond, f).insert(fhead)
+      if(order.lt(head, second)) f(head) :< t.map(f)
+      else t.map(f).insert(f(head))
   }
   override def mapMonotone[B : Ordering](f: A => B): :<[B] =
     f(head) :< tail.mapMonotone(f)

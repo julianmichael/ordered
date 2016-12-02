@@ -6,6 +6,11 @@ package object ordered {
     @inline def :<+(os: OrderedStream[A]) = new :<(a, os)
   }
 
+  implicit class ScoredStreamConsInfixConstructors[A](a: Scored[A]) {
+    @inline def ::<(ss: => ScoredStream[A]) = new ScoredCons(a, ss)
+    @inline def ::<+(ss: ScoredStream[A]) = new ScoredCons(a, ss)
+  }
+
   // maybe you could do some stuff with fancy evidence... probably no need though
 
   // class Monotonic[A, B, FType <: Singleton <: (A => B),
